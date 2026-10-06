@@ -1,0 +1,153 @@
+MODEL:
+  class_path: 'src.model.unet.UNet'
+  KWARGS:
+    num_in_channels: 3
+    num_out_channels: 4
+    dims: [32, 64, 128, 256, 320, 320, 320, 320]
+    depth: 2
+    # InstanceNorm's backward gain is gamma / sqrt(var + eps). Measured with the
+    # 1e-5 default, every one of the 18 norms between the loss and the early
+    # encoders sat at exactly 1/sqrt(eps) = 316, compounding to 1.5e43 and
+    # overflowing at 3.4e38 (the ceiling for FP32 and BF16 alike). 1e-2 caps the
+    # per-norm gain at 10 and keeps the peak gradient around 1e10.
+    # Set back to 1.0e-5 to reproduce the original behaviour.
+    norm_eps: 1.0e-2
+
+TRAIN:
+  COMPILE: True
+  CUDNN_BENCHMARK: True
+  DISTRIBUTED:
+    ENABLED: True
+    NUM_GPUS: -1  # -1 uses every GPU visible through CUDA_VISIBLE_DEVICES.
+    BACKEND: 'nccl'
+    MASTER_ADDR: '127.0.0.1'
+    MASTER_PORT: 0  # 0 selects a free local port for the automatic single-node launcher.
+  LR_SCHEDULER:
+    class_path: 'src.utils.CosineToConstantLR'
+    KWARGS:
+      T_max: 30000
+      eta_min_divisor: 10
+  STOPPER:
+    class_path: 'src.utils.EarlyStopper'
+    KWARGS:
+      metric: 'val_loss'
+      patience: 5
+      delta: 0
+  OPTIMIZER:
+    class_path: 'src.optimizer.adammuon.AdamMuon'
+    KWARGS:
+      lr: 0.0037
+      weight_decay: 0.01
+  # V100 (sm_70) has no native BF16, so FP16 stays the only fast AMP option here.
+  # If the run still reports skipped non-finite batches, set this to 'float32'
+  # (disables autocast, ~2x slower but has FP32's exponent range).
+  AMP_DTYPE: 'float32'
+  GRAD_CLIP: 1.0
+  # Withhold weight decay from the norm affines and the convolutions they
+  # follow: normalisation cancels their scale, so decay shrinks them unopposed
+  # until the variance drops under norm_eps and the gain above saturates. This is
+  # the cause; norm_eps only bounds the symptom.
+  DECOUPLE_NORMALIZED_WEIGHT_DECAY: True
+  # Floor for the FP16 loss scale. Without it the scale halves on every overflow
+  # with no lower bound; once it reaches 0, unscale_() multiplies by 1/0 == inf
+  # and turns finite gradients into NaN without tripping the inf check.
+  MIN_GRAD_SCALE: 128.0
+  MIXED_PRECISION_SCALER:
+    class_path: 'torch.amp.GradScaler'
+    KWARGS:
+      init_scale: 4096.0
+      # 2000 (the default) is longer than an epoch here, so the scale could only
+      # ever decay. 500 lets it recover between overflows.
+      growth_interval: 500
+  CRITERION:
+    class_path: 'src.loss.loss.DiceFocalLoss'
+    KWARGS:
+      alpha: 1.0
+  KWARGS:
+    epochs: 20
+    checkpoint_dir: 'outputs/v100'
+    device: 'cuda'
+    metrics:
+      -
+        class_path: 'src.utils.SavePlotsEveryN'
+        fit: false
+        KWARGS:
+          n: 200
+          plot_path: 'sandbox/unet_pred_and_target.png'
+
+HYPERPARAMETER_SEARCH:
+  SEARCH_SPACE: false
+    # --------------- Uncomment to enable hyperparameter search with ray ---------------
+    # TRAIN:
+    #   OPTIMIZER:
+    #     class_path:
+    #       SAMPLE_TYPE: 'ray.tune.grid_search'
+    #       KWARGS:
+    #         values:
+    #           - torch.optim.AdamW
+    #           - src.optimizer.adammuon.AdamMuon
+    #     KWARGS:
+    #       lr:
+    #         SAMPLE_TYPE: 'ray.tune.grid_search'
+    #         KWARGS:
+    #           values: [0.00050119, 0.00069895, 0.00097474, 0.00135936, 0.00189574, 0.00264376, 0.00368695, 0.00514175, 0.0071706 , 0.01      ]
+    # --------------- Uncomment to enable hyperparameter search with ray ---------------
+
+DATALOADER:
+  class_path: 'torch.utils.data.DataLoader'
+  KWARGS:
+    batch_size: 8
+    shuffle: True
+    num_workers: 4
+    pin_memory: True
+    pin_memory_device: 'cuda'
+    prefetch_factor: 2
+    drop_last: True
+
+DATASET:
+  class_path: 'src.dataset.ecg_scan.ECGScanDataset'
+  KWARGS: {}
+  TRAIN:
+    KWARGS:
+      data_path: '../../data/npj_ecg_dataset/train'
+    TRANSFORM:
+      class_path: 'src.transform.vision.ComposedTransform'
+      KWARGS:
+        transform_config:
+          - class_path: 'src.transform.vision.RandomCrop'
+            KWARGS:
+              size: [1024, 1024]
+          - class_path: 'src.transform.vision.RandomFlipTransform'
+            KWARGS: {}
+          - class_path: 'src.transform.vision.RandomSaturationContrast'
+            KWARGS: {}
+          - class_path: 'src.transform.vision.RandomQRCode'
+            KWARGS: {}
+          - class_path: 'src.transform.vision.RandomBorder'
+          #   KWARGS: {}
+          # - class_path: 'src.transform.vision.RandomFourierDropout'
+            KWARGS: {}
+          - class_path: 'src.transform.vision.RandomGradientOverlay'
+            KWARGS: {}
+          - class_path: 'src.transform.vision.RandomJPEGCompressionTransform'
+            KWARGS: {}
+          - class_path: 'src.transform.vision.RandomZoomTransform'
+            KWARGS: {}
+          - class_path: 'src.transform.vision.RefineMask'
+            KWARGS: {}
+
+  VAL:
+    KWARGS:
+      data_path: '../../data/npj_ecg_dataset/val'
+    TRANSFORM:
+      class_path: 'src.transform.vision.ComposedTransform'
+      KWARGS:
+        transform_config:
+          - class_path: 'src.transform.vision.RandomCrop'
+            KWARGS:
+              size: [1024, 1024]
+          - class_path: 'src.transform.vision.RefineMask'
+            KWARGS: {}
+  TEST:
+    KWARGS:
+      data_path: '../../data/npj_ecg_dataset/test'

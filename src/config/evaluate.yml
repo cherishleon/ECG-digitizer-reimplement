@@ -1,0 +1,4 @@
+digitized_dir: sandbox/inference_output
+ground_truth_dir: 'data/ground_truth'
+results_csv: sandbox/metrics.csv
+shift_steps: 200 # symmetric 200 ms -> max. 100 ms left or right

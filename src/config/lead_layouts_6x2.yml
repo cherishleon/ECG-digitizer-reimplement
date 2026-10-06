@@ -1,0 +1,14 @@
+6x2_with_r1:
+  description: "6 rows × 2 columns with 1 rhythm lead (II)"
+  layout:
+    rows: 6
+    cols: 2
+  leads:
+    - ["I",   "V1"]
+    - ["II",  "V2"]
+    - ["III", "V3"]
+    - ["aVR", "V4"]
+    - ["aVL", "V5"]
+    - ["aVF", "V6"]
+  rhythm_leads: ["II"]
+  total_rows: 7

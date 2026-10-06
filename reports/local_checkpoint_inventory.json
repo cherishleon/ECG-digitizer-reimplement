@@ -1,0 +1,122 @@
+[
+  {
+    "filename": "npj_newdata_weights_39.pt",
+    "bytes": 90460656,
+    "included_in_release": true
+  },
+  {
+    "filename": "weights_16.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_17.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_18.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_19.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_20.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_21.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_22.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_23.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_24.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_25.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_26.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_27.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_28.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_29.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_30.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_31.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_32.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_33.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_34.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_35.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_36.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_37.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  },
+  {
+    "filename": "weights_38.pt",
+    "bytes": 90460656,
+    "included_in_release": false
+  }
+]

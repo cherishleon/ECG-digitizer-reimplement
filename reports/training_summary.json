@@ -1,0 +1,25 @@
+{
+  "source_log_label": "newdata_training_run",
+  "source_log_sha256": "99c434cb7d50bcfef645e853fb6e3e7e08fa2883b39ed4719a2c700539d9859f",
+  "logged_epochs": 40,
+  "best_epoch": {
+    "epoch": 39,
+    "planned_epochs": 40,
+    "train_loss": 0.05739559382041686,
+    "val_loss": 0.043514484568928063,
+    "skipped_loss_batches": 0,
+    "skipped_gradient_steps": 20
+  },
+  "last_epoch": {
+    "epoch": 40,
+    "planned_epochs": 40,
+    "train_loss": 0.05731132882033759,
+    "val_loss": 0.043589257622619025,
+    "skipped_loss_batches": 0,
+    "skipped_gradient_steps": 29
+  },
+  "hardware_from_log": "2 x NVIDIA A100-SXM4-80GB",
+  "precision_from_log": "bfloat16, scaler off, grad_clip=1.0",
+  "independent_test_result": null,
+  "historical_config_dump_available": false
+}
