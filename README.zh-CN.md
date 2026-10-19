@@ -22,7 +22,7 @@
 需要 Python 3.12。GPU 训练需要与驱动兼容的 PyTorch CUDA 安装；本次整理时的可用环境是 Python 3.12.0、PyTorch 2.6.0+cu124，不代表历史作业保存过完整依赖锁。
 
 ```bash
-git clone https://github.com/<YOUR_USERNAME>/ECG-digitizer.git
+git clone https://github.com/cherishleon/ECG-digitizer.git
 cd ECG-digitizer
 git lfs install
 git lfs pull
