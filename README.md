@@ -22,7 +22,7 @@ See [docs/CHANGES.md](docs/CHANGES.md) for changes by file and [docs/THIRD_PARTY
 Python 3.12 is required. GPU training requires a PyTorch CUDA build compatible with your driver. The environment available when this repository was prepared used Python 3.12.0 and PyTorch 2.6.0+cu124; this does not mean that a complete dependency lock was saved for the historical training jobs.
 
 ```bash
-git clone https://github.com/<YOUR_USERNAME>/ECG-digitizer.git
+git clone https://github.com/cherishleon/ECG-digitizer.git
 cd ECG-digitizer
 git lfs install
 git lfs pull
