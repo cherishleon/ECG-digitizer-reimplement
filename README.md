@@ -1,23 +1,25 @@
-# ECG-digitizer 复现
+# ECG-digitizer Reproduction
 
-本仓库直接复现论文 *Digitizing Paper ECGs at Scale: An Open-Source Algorithm for Clinical Research* 的 ECG 图像数字化方法，基于作者的 [Open-ECG-Digitizer 开源代码](https://github.com/Ahus-AIM/Open-ECG-Digitizer) 开展训练与推理。
+**English** | [简体中文](README.zh-CN.md)
 
-复现沿用原项目的分割网络与数字化流程，并在此基础上加入多卡训练、V100 / A100 适配、训练数值保护以及部分推理改进。另外使用 PTB-XL / Chapman 波形生成了新的合成训练数据，提供自己训练的分割权重。以下说明本次复现所做的修改、数据生成方式和使用方法。
+This repository reproduces the ECG image digitization method described in *Digitizing Paper ECGs at Scale: An Open-Source Algorithm for Clinical Research*, using the authors' [Open-ECG-Digitizer code](https://github.com/Ahus-AIM/Open-ECG-Digitizer) for training and inference.
 
-## 在原项目基础上的改动
+The reproduction retains the original segmentation network and digitization pipeline, while adding multi-GPU training, V100 / A100 support, numerical safeguards during training, and inference improvements. It also includes scripts for generating new synthetic training data from PTB-XL / Chapman waveforms and provides segmentation weights trained on that data. The sections below describe the modifications, data generation process, and usage.
 
-- **多卡训练**：在 `src/train.py` / `src/utils.py` 中加入 DDP、DistributedSampler、自动多卡启动和显式 `torchrun`，仅 rank 0 保存模型。
-- **GPU 与数值适配**：V100 的 Muon 使用 FP32，A100 支持 BF16；loss 使用 FP32，增加梯度裁剪、非有限值保护与可配置 InstanceNorm eps。
-- **自建数据**：新增页面渲染与数据生成脚本，从 PTB-XL / Chapman 波形生成三种布局、15 种网格样式的 ECG 图像及 RGB mask。仓库仅提供生成脚本和说明，不上传自建图像。
-- **推理改进**：调整裁剪与信号内容边界，处理校准脉冲，并补充输出 metadata。
-- **训练与推理配置**：提供单卡 / 多卡配置、两份 A100 Slurm 脚本、自定义模型保存路径，以及匹配新权重的推理配置。
-- **自训练权重**：发布 `npj_newdata_weights_39.pt`，并将原项目模型与自己训练的模型分开标注。
+## Changes to the Original Project
 
-逐文件的修改说明见 [docs/CHANGES.md](docs/CHANGES.md)，原方法与原始模型的署名见 [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md)。
+- **Multi-GPU training**: Added DDP, DistributedSampler, automatic multi-GPU launch, and explicit `torchrun` support in `src/train.py` / `src/utils.py`. Only rank 0 saves models.
+- **GPU and numerical support**: Muon uses FP32 on V100 and supports BF16 on A100. Loss is computed in FP32, with gradient clipping, non-finite value safeguards, and configurable InstanceNorm eps.
+- **Custom data**: Added page rendering and data generation scripts that produce ECG images and RGB masks in three layouts and 15 grid styles from PTB-XL / Chapman waveforms. Only the scripts and documentation are included; the generated images are not uploaded.
+- **Inference improvements**: Adjusted cropping and signal content boundaries, added calibration pulse handling, and expanded output metadata.
+- **Training and inference configurations**: Provided single-GPU / multi-GPU configurations, two A100 Slurm scripts, configurable checkpoint directories, and inference configurations matching the new weights.
+- **Weights trained in this reproduction**: Released `npj_newdata_weights_39.pt`, with clear attribution distinguishing it from the original project's models.
 
-## 安装
+See [docs/CHANGES.md](docs/CHANGES.md) for changes by file and [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md) for attribution of the original method and models.
 
-需要 Python 3.12。GPU 训练需要与驱动兼容的 PyTorch CUDA 安装；本次整理时的可用环境是 Python 3.12.0、PyTorch 2.6.0+cu124，不代表历史作业保存过完整依赖锁。
+## Installation
+
+Python 3.12 is required. GPU training requires a PyTorch CUDA build compatible with your driver. The environment available when this repository was prepared used Python 3.12.0 and PyTorch 2.6.0+cu124; this does not mean that a complete dependency lock was saved for the historical training jobs.
 
 ```bash
 git clone https://github.com/<YOUR_USERNAME>/ECG-digitizer.git
@@ -29,76 +31,76 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-`requirements.txt` 保留原项目依赖；`reports/environment_snapshot.json` 是整理时环境快照，不是保证逐位一致的训练环境。安装 PyTorch 时根据自己的 CUDA 环境选择发行版。
+`requirements.txt` retains the original project's dependencies. `reports/environment_snapshot.json` is a snapshot taken when this repository was prepared, not a guarantee of an identical training environment. Select a PyTorch build appropriate for your CUDA environment.
 
-## 新增数据
+## New Synthetic Data
 
-本次复现使用 **PTB-XL 的公开 12 导联 WFDB 波形**与 **Chapman 的 12 导联 CSV 波形**，重新渲染为带网格、导联文字及增强的 ECG 页面，并同步生成分割 mask，用于本项目的分割模型训练。
+This reproduction uses **public 12-lead WFDB waveforms from PTB-XL** and **12-lead CSV waveforms from Chapman** to render ECG pages with grids, lead labels, and augmentations. Matching segmentation masks are generated for training the segmentation model.
 
-主生成入口为 `generate_open_ecg_gridtype_dataset.py`，配合 `generate_open_ecg_segmentation_dataset.py`（布局与掩码）、`ecg_page_rendering.py`（页面与网格）以及 `generate_synthetic_3x4_rhythm_dataset.py`（波形读取工具）。这些脚本随仓库提供，使用自己的源数据路径运行即可。
+The main entry point is `generate_open_ecg_gridtype_dataset.py`, supported by `generate_open_ecg_segmentation_dataset.py` (layouts and masks), `ecg_page_rendering.py` (pages and grids), and `generate_synthetic_3x4_rhythm_dataset.py` (waveform loading utilities). These scripts are included in the repository and can be run with your own source data paths.
 
-本次复现共生成 **116,500 对 PNG 图像 / mask**，来自 32,387 个源记录：
+This reproduction generated **116,500 PNG image / mask pairs** from 32,387 source records:
 
-| 项目 | 数量 |
+| Item | Count |
 | --- | ---: |
 | train | 98,694 |
 | val | 17,806 |
 | test | 0 |
-| PTB-XL 衍生页 | 78,396 |
-| Chapman 衍生页 | 38,104 |
-| 正面页 | 97,161 |
-| 额外透视页 | 19,339 |
+| PTB-XL-derived pages | 78,396 |
+| Chapman-derived pages | 38,104 |
+| Frontal pages | 97,161 |
+| Additional perspective pages | 19,339 |
 
-布局包含 `4x3_plus_3`、`6x2_plus_1`、`4x3_plus_1`。这里 `4x3` 表示 4 列 × 3 行，即常说的 3×4 ECG 页面。Mask：R=网格，G=文字 / 校准脉冲 / 干扰标记，B=生理 ECG 曲线；背景由剩余概率得到。
+The layouts are `4x3_plus_3`, `6x2_plus_1`, and `4x3_plus_1`. Here, `4x3` means 4 columns × 3 rows, commonly called a 3×4 ECG page. Mask channels are R=grid, G=text / calibration pulses / interference marks, and B=physiological ECG traces; the background is derived from the remaining probability.
 
-**自建图像、mask、原始波形和逐条 manifest 均不上传 GitHub**，只提供生成程序、数据来源、配方与汇总统计。具体参数、波形格式、划分方式及局限见 [数据说明](docs/DATASET.md)。上游程序原有的固定增强资源与小型测试样例不属于本次自建数据，保留以确保程序和测试可运行。
+**The generated images, masks, raw waveforms, and per-record manifests are not uploaded to GitHub.** Only the generation code, data sources, recipe, and summary statistics are provided. See the [dataset documentation](docs/DATASET.md) for parameters, waveform formats, splitting, and limitations. The upstream project's fixed augmentation assets and small test samples are retained so that the code and tests can run; they are separate from the data generated for this reproduction.
 
-历史生成采用记录级 85% / 15% / 0% 划分。配置里的 TEST 暂时借用 val，仅用于满足现有 loader 的接口，**没有独立测试集结果**。需要独立测试集时请重新生成，例如 `--split-ratios 0.8,0.1,0.1`，并修改 TEST 路径；这会改变数据划分和训练结果。
+The historical generation used a record-level 85% / 15% / 0% split. The TEST configuration currently reuses val to satisfy the existing loader interface; **there are no independent test-set results**. To create an independent test set, regenerate the data with a split such as `--split-ratios 0.8,0.1,0.1` and update the TEST path. This changes the data split and training results.
 
-下载原始波形后，先做小规模生成：
+After downloading the source waveforms, start with a small generation run:
 
 ```bash
 python generate_open_ecg_gridtype_dataset.py --ptb-root /path/to/ptb-xl --chapman-root /path/to/chapman_csv --output-dir data/smoke_dataset --limit-ptb 2 --limit-chapman 2 --workers 2 --seed 1234
 ```
 
-重建历史配方：
+To reproduce the historical generation recipe:
 
 ```bash
 python generate_open_ecg_gridtype_dataset.py --ptb-root /path/to/ptb-xl --chapman-root /path/to/chapman_csv --output-dir data/npj_ecg_dataset_new --workers 24 --seed 1234 --split-ratios 0.85,0.15,0
 ```
 
-启用中文报告文本时需要中文字体，可以加 `--chinese-font /path/to/font.ttf`。没有字体时可用 `--chinese-text-probability 0` 做功能检查，但不再是历史配方。Chapman 输入为 500 Hz 的 12 导联 CSV，默认单位换算除以 1000；不要直接传入未经确认格式的 WFDB 数据。
+Chinese report text requires a Chinese font, supplied with `--chinese-font /path/to/font.ttf`. Without a font, use `--chinese-text-probability 0` for a functional check, but this no longer matches the historical recipe. Chapman input must be 500 Hz, 12-lead CSV data; the default unit conversion divides values by 1000. Do not pass WFDB data without first confirming its format.
 
-## 单卡 / 多卡训练
+## Single-GPU / Multi-GPU Training
 
-从仓库根目录执行。优先使用 A100 BF16 配置；40 GB 显存卡需自行降低 batch，历史作业使用 A100-SXM4-80GB。
+Run these commands from the repository root. Prefer the A100 BF16 configurations. Reduce the batch size as needed for GPUs with 40 GB of memory; the historical jobs used A100-SXM4-80GB GPUs.
 
 ```bash
-# 仅暴露一张卡：单进程训练
+# Expose one GPU for single-process training
 CUDA_VISIBLE_DEVICES=0 python -m src.train --config src/config/unet_a100_newdata.yml
 
-# 与历史 newdata 脚本对应：2 张 A100
+# Match the historical newdata script: 2 A100 GPUs
 torchrun --standalone --nproc-per-node=2 --module src.train --config src/config/unet_a100_newdata.yml
 
-# v2 当前脚本：4 张 A100
+# Current v2 script: 4 A100 GPUs
 torchrun --standalone --nproc-per-node=4 --module src.train --config src/config/unet_a100_v2.yml
 
-# 自动使用所有可见 GPU
+# Automatically use all visible GPUs
 CUDA_VISIBLE_DEVICES=0,1,2,3 python -m src.train --config src/config/unet_a100_v2.yml
 ```
 
-`DATALOADER.KWARGS.batch_size` 是**每卡 batch**，全局 batch=每卡 batch×GPU 数；当前未实现梯度累积。
+`DATALOADER.KWARGS.batch_size` is the **batch size per GPU**. Global batch size = batch size per GPU × number of GPUs. Gradient accumulation is not currently implemented.
 
-| 配置 / 脚本 | GPU 数 | 每卡 batch | 全局 batch | epochs | AMP | 初始 LR | T_max |
+| Configuration / script | GPUs | Batch per GPU | Global batch | Epochs | AMP | Initial LR | T_max |
 | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: |
 | newdata / `run_a100_newdata.sh` | 2 | 20 | 40 | 40 | BF16 | 0.0037 | 46,500 |
 | v2 / `run_a100_v2.sh` | 4 | 20 | 80 | 40 | BF16 | 0.0037 | 46,500 |
 
-T_max 按训练 batch 计数，最低 LR=0.00037，之后恒定；跳过优化器更新的 batch 仍推进 scheduler。以 98,694 张图估算：2 卡每轮 2,467 steps，约第 18.85 轮降至最低；4 卡每轮 1,233 steps，约第 37.71 轮降至最低。因此更改卡数并不只改变速度，也改变余弦调度覆盖的 epoch 数。这两份配置不是完全等价实验。
+T_max is counted in training batches. The minimum LR is 0.00037 and remains constant after it is reached. Batches with skipped optimizer updates still advance the scheduler. For 98,694 images, 2 GPUs yield approximately 2,467 steps per epoch and reach the minimum LR around epoch 18.85; 4 GPUs yield approximately 1,233 steps per epoch and reach it around epoch 37.71. Changing the GPU count therefore also changes how many epochs the cosine schedule spans. These two configurations are not fully equivalent experiments.
 
-新数据路径写作 `../../data/npj_ecg_dataset_new/train` 等，是因为现有 ECGScanDataset 的相对路径以 `src/dataset/` 为基准。也可以全部改为自己的绝对路径。
+The new data paths use forms such as `../../data/npj_ecg_dataset_new/train` because the existing ECGScanDataset resolves relative paths from `src/dataset/`. You can also replace them with your own absolute paths.
 
-设置 `TRAIN.KWARGS.checkpoint_dir` 可选择保存路径（相对仓库根目录）：
+Set `TRAIN.KWARGS.checkpoint_dir` to choose the output directory, relative to the repository root:
 
 ```yaml
 TRAIN:
@@ -106,15 +108,15 @@ TRAIN:
     checkpoint_dir: 'outputs/a100_newdata'
 ```
 
-仅 rank 0 保存 `weights_<epoch>.pt`，不带 DDP / compile 前缀。普通训练不使用 YAML 中的 Ray `STOPPER`，会执行设定 epochs。验证有随机裁剪，且默认 drop_last=True，因此不是全图、确定性验证。
+Only rank 0 saves `weights_<epoch>.pt`, without DDP / compile prefixes. Standard training does not use the Ray `STOPPER` in the YAML and runs for the configured number of epochs. Validation uses random crops and defaults to drop_last=True, so it is not deterministic, full-image validation.
 
-V100 示例是 `src/config/unet.yml`，采用 FP32 forward 与 FP32 Muon。其数据路径指向旧数据目录，需要自行准备；不要直接假设每卡 batch 8 能在 FP32 下装进 32 GB 显存，建议小 batch 做试跑。不能把 V100 与 A100 直接混成同一作业，因为当前 Muon 会按 GPU 选择不同计算 dtype。
+The V100 example is `src/config/unet.yml`, which uses FP32 forward passes and FP32 Muon. Its data paths point to an older data directory that you must prepare yourself. Do not assume that a batch size of 8 per GPU will fit in 32 GB of memory with FP32; start with a small batch for a trial run. V100 and A100 GPUs cannot be mixed in one job because the current Muon implementation selects different computation dtypes for these GPUs.
 
-恢复训练入口为 `--resume`，读取输出目录中的 `checkpoint_last.pt`。本次提供的第 39 轮文件只有 model state_dict，可用于推理，不能等价恢复训练。现有自定义 AdamMuon 的子优化器 state 尚未完整纳入外层序列化，随机数状态也未保存；恢复功能不保证与未中断训练一致，详见 [已知限制](docs/CHANGES.md)。
+Use `--resume` to resume training from `checkpoint_last.pt` in the output directory. The provided epoch 39 file contains only the model state_dict and can be used for inference, but cannot restore the full training state. The sub-optimizer states of the custom AdamMuon are not yet fully included in the outer optimizer's serialization, and random number generator states are not saved. Resumed training is therefore not guaranteed to match uninterrupted training. See the [known limitations](docs/CHANGES.md).
 
 ## Slurm
 
-在集群上先激活自己的环境，再提交。脚本不硬编码用户目录或项目账号：
+Activate your environment before submitting jobs on the cluster. The scripts do not hardcode user directories or project accounts:
 
 ```bash
 mkdir -p logs
@@ -122,47 +124,47 @@ sbatch --account=<YOUR_ACCOUNT> --export=ALL,ECG_PYTHON=/path/to/env/bin/python 
 sbatch --account=<YOUR_ACCOUNT> --export=ALL,ECG_PYTHON=/path/to/env/bin/python run_a100_v2.sh
 ```
 
-仓库路径优先使用 `ECG_REPO_DIR`，否则读取 `SLURM_SUBMIT_DIR`；非 Slurm 调用时使用脚本所在目录。通过 `ECG_PYTHON`、`ECG_CONFIG`、`ECG_TRITON_CACHE_DIR` 可分别设置 Python、配置和缓存路径。GPU 型号名 `a100`、资源配额和日志目录按集群修改，账号只在提交时传入，不写入脚本。
+The repository path is taken from `ECG_REPO_DIR` first, then `SLURM_SUBMIT_DIR`. Outside Slurm, it defaults to the script's directory. Set `ECG_PYTHON`, `ECG_CONFIG`, and `ECG_TRITON_CACHE_DIR` to override the Python executable, configuration, and cache directory, respectively. Adjust the GPU type name `a100`, resource requests, and log directory for your cluster. Supply the account at submission time rather than writing it into the scripts.
 
-## 权重与推理
+## Model Weights and Inference
 
-本项目自训练权重只发布在新增合成数据上训练得到的 `npj_newdata_weights_39.pt`，不发布其他训练 epoch 的权重。另外保留原项目模型，并明确区分来源。
+The only segmentation weights trained in this reproduction that are released are `npj_newdata_weights_39.pt`, trained on the new synthetic data. Weights from other training epochs are not released. The original project's models are also retained and clearly attributed.
 
-| 文件 | 用途 | 来源 |
+| File | Purpose | Source |
 | --- | --- | --- |
-| `checkpoints/npj_newdata_weights_39.pt` | 自训练四类 ECG 页面分割 | newdata，epoch 39，验证 loss 0.0435144846 |
-| `checkpoints/unet_weights_07072025.pt` | 原始四类页面分割 | 上游原始文件 |
-| `checkpoints/lead_name_unet_weights_07072025.pt` | 导联文字识别 | 上游原始文件；没有重新训练 |
+| `checkpoints/npj_newdata_weights_39.pt` | Four-class ECG page segmentation trained in this reproduction | newdata, epoch 39, validation loss 0.0435144846 |
+| `checkpoints/unet_weights_07072025.pt` | Original four-class page segmentation | Original upstream file |
+| `checkpoints/lead_name_unet_weights_07072025.pt` | Lead label recognition | Original upstream file; not retrained |
 
-详见 [权重说明](checkpoints/README.md)，校验信息在 `reports/checkpoints.json`。Git LFS 下载失败时会留下文本 pointer，无法直接 torch.load。
+See the [checkpoint documentation](checkpoints/README.md) for details and `reports/checkpoints.json` for verification metadata. If Git LFS downloads fail, the files remain text pointers and cannot be loaded directly with torch.load.
 
 ```bash
 python -m src.digitize --config src/config/inference_newdata.yml DATA.images_path=/path/to/ecg_images DATA.output_path=outputs/inference
 ```
 
-自训练权重必须使用 `norm_eps: 1.0e-2`，该值不会保存在 state_dict 中。原始分割权重保持 `1.0e-5`。公开版 `inference_newdata.yml` 已配置正确值；识别布局可通过 `lead_layouts_*.yml` 限制。输出波形单位为 μV。
+The weights trained in this reproduction require `norm_eps: 1.0e-2`, which is not stored in the state_dict. The original segmentation weights use `1.0e-5`. The published `inference_newdata.yml` already sets the correct value. Use `lead_layouts_*.yml` to restrict the layouts considered during recognition. Output waveforms are in μV.
 
-针对固定版式，还提供 `inference_3x4_newdata.yml`（3×4 短导联 + 3 条长节律）和 `inference_6x2_newdata.yml`（6×2 短导联 + 1 条长节律）。配置名只描述布局，不包含本地数据来源标签。
+For fixed layouts, the repository also provides `inference_3x4_newdata.yml` (3×4 short leads + 3 long rhythm strips) and `inference_6x2_newdata.yml` (6×2 short leads + 1 long rhythm strip). These configuration names describe the layouts and do not include local data source labels.
 
-本地完整日志记录 2×A100-SXM4-80GB、40 epochs：第 39 轮 train_loss=0.0573955938，val_loss=0.0435144846；第 40 轮 val_loss=0.0435892576。这是合成数据随机裁剪验证损失，不是独立测试成绩或波形重建精度。日志仍记录若干非有限梯度步骤被跳过，不能解释成所有步骤均稳定。逐轮指标见 `reports/training_newdata.csv`。
+The complete local logs record training on 2×A100-SXM4-80GB for 40 epochs. Epoch 39 had train_loss=0.0573955938 and val_loss=0.0435144846; epoch 40 had val_loss=0.0435892576. These are validation losses on random crops of synthetic data, not independent test results or waveform reconstruction accuracy. The logs also record several steps skipped due to non-finite gradients, so they do not establish that every training step was stable. Per-epoch metrics are available in `reports/training_newdata.csv`.
 
-## 文件导航
+## Repository Guide
 
-| 路径 | 作用 |
+| Path | Purpose |
 | --- | --- |
-| `src/train.py` | DDP 启动、精度控制、训练 / 验证、checkpoint |
-| `src/utils.py` | DistributedSampler、余弦至恒定 LR、rank 0 绘图 |
-| `src/model/unet.py` | 分割网络、可配置 norm_eps、冻结未使用层 |
-| `src/optimizer/adammuon.py` | Muon + AdamW、dtype 选择、参数组 weight decay |
-| `src/transform/vision.py` | 数据增强、Fourier 归一化除零保护 |
-| `ecg_page_rendering.py` | 页面几何、网格与掩码合成 |
-| `generate_open_ecg_gridtype_dataset.py` | 推荐数据生成入口 |
-| `generate_open_ecg_segmentation_dataset.py` | gridtype 依赖的三布局渲染逻辑 |
-| `generate_synthetic_3x4_rhythm_dataset.py` | 波形读取及旧渲染工具；旧六通道 mask 不可直接用于当前训练 |
-| `src/model/cropper.py`、`inference_wrapper.py` | 内容保留、裁剪改进、校准脉冲处理 |
-| `docs/`、`reports/` | 修改、数据、发布说明和可核查实验记录 |
+| `src/train.py` | DDP launch, precision control, training / validation, checkpointing |
+| `src/utils.py` | DistributedSampler, cosine-to-constant LR schedule, rank 0 plotting |
+| `src/model/unet.py` | Segmentation network, configurable norm_eps, freezing unused layers |
+| `src/optimizer/adammuon.py` | Muon + AdamW, dtype selection, parameter-group weight decay |
+| `src/transform/vision.py` | Data augmentation, division-by-zero protection in Fourier normalization |
+| `ecg_page_rendering.py` | Page geometry, grid and mask composition |
+| `generate_open_ecg_gridtype_dataset.py` | Recommended data generation entry point |
+| `generate_open_ecg_segmentation_dataset.py` | Three-layout rendering logic used by gridtype generation |
+| `generate_synthetic_3x4_rhythm_dataset.py` | Waveform loading and legacy rendering utilities; the old six-channel masks cannot be used directly for current training |
+| `src/model/cropper.py`, `inference_wrapper.py` | Content preservation, cropping improvements, calibration pulse handling |
+| `docs/`, `reports/` | Changes, dataset and release documentation, and verifiable experiment records |
 
-## 本地检查
+## Local Checks
 
 ```bash
 python -m pip install pytest
@@ -170,13 +172,13 @@ OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 python -m pytest -q test
 python -m torch.distributed.run --standalone --nproc-per-node=2 scripts/smoke_ddp.py
 ```
 
-测试会在忽略的 `sandbox/` 中生成临时权重。CPU/Gloo 检查不替代实际 GPU 训练和端到端精度评测；本次检查结果见 `reports/release_validation.json`。
+The tests generate temporary weights in the ignored `sandbox/` directory. CPU/Gloo checks do not replace actual GPU training or end-to-end accuracy evaluation. The results recorded when this repository was prepared are in `reports/release_validation.json`.
 
-## 复现来源、许可与引用
+## Original Work, License, and Citation
 
-原方法与原始实现来自 [Ahus-AIM/Open-ECG-Digitizer](https://github.com/Ahus-AIM/Open-ECG-Digitizer)。本仓库在其基础上进行复现与修改，保留原项目 [CC BY-SA 4.0 LICENSE](LICENSE)，新增代码按同一许可提供。数据来源保留各自授权和引用，见 [第三方说明](docs/THIRD_PARTY.md)。原始临床 JPG/XML、私有叠加图、患者记录、集群凭据和训练日志不随仓库发布。
+The original method and implementation come from [Ahus-AIM/Open-ECG-Digitizer](https://github.com/Ahus-AIM/Open-ECG-Digitizer). This repository reproduces and modifies that work, retaining the original project's [CC BY-SA 4.0 LICENSE](LICENSE). New code is provided under the same license. Data sources retain their respective licenses and citation requirements; see the [third-party documentation](docs/THIRD_PARTY.md). Original clinical JPG/XML files, private overlay images, patient records, cluster credentials, and training logs are not distributed with this repository.
 
-请引用原论文：
+Please cite the original paper:
 
 ```bibtex
 @article{stenhede_digitizing_2026,
@@ -188,4 +190,4 @@ python -m torch.distributed.run --standalone --nproc-per-node=2 scripts/smoke_dd
 }
 ```
 
-数据生成的详细说明见 [docs/DATASET.md](docs/DATASET.md)，逐文件修改与当前限制见 [docs/CHANGES.md](docs/CHANGES.md)。
+See [docs/DATASET.md](docs/DATASET.md) for detailed data generation documentation and [docs/CHANGES.md](docs/CHANGES.md) for changes by file and current limitations.
